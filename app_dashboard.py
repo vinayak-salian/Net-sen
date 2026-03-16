@@ -1,37 +1,66 @@
 import streamlit as st
-import streamlit_authenticator as stauth
 import pandas as pd
+import boto3  # <-- NEW: For AWS Integration
 
-# --- 1. USER AUTHENTICATION CONFIG ---
-credentials = {
-    "usernames": {
-        "vinayak": {
-            "name": "Vinayak Salian",
-            "password": "$2b$12$F1s0O7L4fUZ1RrFS.hN0JeGE6x1xRgLT5mChPP5H7oaFoaep5UC3W" 
-        }
-    }
-}
+# --- 1. AWS COGNITO CONFIG ---
+# Replace with your actual IDs
+COGNITO_CLIENT_ID = "f5etbjhkikcoe31g58iqkmv1j"
+REGION = "us-east-1"
 
-authenticator = stauth.Authenticate(
-    credentials=credentials,
-    cookie_name="netsentinel_cookie",
-    key="auth_key",
-    cookie_expiry_days=30
-)
+def check_aws_auth(username, password):
+    client = boto3.client('cognito-idp', region_name=REGION)
+    try:
+        response = client.initiate_auth(
+            ClientId=COGNITO_CLIENT_ID,
+            AuthFlow='USER_PASSWORD_AUTH',
+            AuthParameters={
+                'USERNAME': username,
+                'PASSWORD': password
+            }
+        )
+        # If no exception, auth is successful
+        return True, username
+    except Exception as e:
+        return False, str(e)
 
-# --- 2. RENDER LOGIN ---
-authenticator.login(location='main')
+# --- 2. SESSION STATE INITIALIZATION ---
+if "authentication_status" not in st.session_state:
+    st.session_state["authentication_status"] = None
+if "name" not in st.session_state:
+    st.session_state["name"] = None
 
-if st.session_state["authentication_status"]:
-    # --- AUTHENTICATED: SHOW DASHBOARD ---
+# --- 3. RENDER LOGIN (Cognito Style) ---
+if st.session_state["authentication_status"] is not True:
+    st.title("🛡️ NetSentinel Login")
+    with st.form("Login"):
+        username = st.text_input("Email/Username")
+        password = st.text_input("Password", type="password")
+        submit = st.form_submit_button("Login")
+        
+        if submit:
+            success, info = check_aws_auth(username, password)
+            if success:
+                st.session_state["authentication_status"] = True
+                st.session_state["name"] = info
+                st.rerun()
+            else:
+                st.session_state["authentication_status"] = False
+                st.error(f"Login failed: {info}")
+
+# --- 4. SHOW DASHBOARD (Original Features Preserved) ---
+if st.session_state["authentication_status"] is True:
+    
     with st.sidebar:
         st.write(f"Logged in as: **{st.session_state['name']}**")
-        authenticator.logout('Logout', 'sidebar')
+        if st.button("Logout"):
+            st.session_state["authentication_status"] = None
+            st.session_state["name"] = None
+            st.rerun()
     
     st.title("🛡️ NetSentinel: King Admin")
     st.caption("Cross-Platform Security Command & Control")
 
-    # Initialize session state for mock data
+    # PRESERVED: Initialize session state for mock data
     if 'devices' not in st.session_state:
         st.session_state.devices = [
             {"mac": "1a:8e:8d:01:02:03", "ip": "192.168.1.5", "name": "HP-Victus", "status": "TRUSTED"},
@@ -41,7 +70,7 @@ if st.session_state["authentication_status"]:
     if 'blacklist' not in st.session_state:
         st.session_state.blacklist = []
 
-    # --- TOP ROW: BLACKLIST ---
+    # PRESERVED: TOP ROW: BLACKLIST
     with st.expander("🚫 Active Blacklist"):
         if st.session_state.blacklist:
             for mac in st.session_state.blacklist:
@@ -55,10 +84,9 @@ if st.session_state["authentication_status"]:
 
     st.markdown("---")
 
-    # --- DEVICE MANAGEMENT TABLE ---
+    # PRESERVED: DEVICE MANAGEMENT TABLE
     st.subheader("📡 Live Network Status")
     
-    # Headers
     h1, h2, h3, h4, h5 = st.columns([2, 2, 2, 1, 2])
     h1.write("**Device**")
     h2.write("**MAC Address**")
@@ -94,13 +122,8 @@ if st.session_state["authentication_status"]:
                 st.session_state.blacklist.append(row['mac'])
                 st.rerun()
 
-    # --- TRAFFIC HEARING ---
+    # PRESERVED: TRAFFIC HEARING
     st.markdown("---")
     st.subheader("👂 Traffic Hearing (DNS Logs)")
     mock_logs = [{"Time": "23:05", "Device": "IoT-Device", "Domain": "api.tracker.com"}]
     st.table(pd.DataFrame(mock_logs))
-
-elif st.session_state["authentication_status"] is False:
-    st.error('Username/password is incorrect')
-elif st.session_state["authentication_status"] is None:
-    st.warning('Please enter your credentials')
