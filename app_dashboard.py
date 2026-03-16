@@ -8,8 +8,15 @@ COGNITO_CLIENT_ID = "f5etbjhkikcoe31g58iqkmv1j"
 REGION = "us-east-1"
 
 def check_aws_auth(username, password):
-    client = boto3.client('cognito-idp', region_name=REGION)
     try:
+        # This part pulls the keys you just saved in the Streamlit "Secrets" tab
+        client = boto3.client(
+            'cognito-idp',
+            region_name=st.secrets["AWS_DEFAULT_REGION"],
+            aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
+            aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"]
+        )
+        
         response = client.initiate_auth(
             ClientId=COGNITO_CLIENT_ID,
             AuthFlow='USER_PASSWORD_AUTH',
@@ -18,9 +25,9 @@ def check_aws_auth(username, password):
                 'PASSWORD': password
             }
         )
-        # If no exception, auth is successful
         return True, username
     except Exception as e:
+        # If it still fails, this will show us the specific AWS error
         return False, str(e)
 
 # --- 2. SESSION STATE INITIALIZATION ---
