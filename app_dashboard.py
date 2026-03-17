@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import boto3  # <-- NEW: For AWS Integration
-
+from datetime import datetime
 # --- 1. AWS COGNITO CONFIG ---
 # Replace with your actual IDs
 COGNITO_CLIENT_ID = "f5etbjhkikcoe31g58iqkmv1j"
@@ -9,32 +9,61 @@ REGION = "us-east-1"
 
 def check_aws_auth(username, password):
     try:
-        # This part pulls the keys you just saved in the Streamlit "Secrets" tab
         client = boto3.client(
-            'cognito-idp',
-            region_name=st.secrets["AWS_DEFAULT_REGION"],
+            'cognito-idp', 
+            region_name=REGION,
             aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
             aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"]
         )
-        
-        response = client.initiate_auth(
+        client.initiate_auth(
             ClientId=COGNITO_CLIENT_ID,
             AuthFlow='USER_PASSWORD_AUTH',
-            AuthParameters={
-                'USERNAME': username,
-                'PASSWORD': password
-            }
+            AuthParameters={'USERNAME': username, 'PASSWORD': password}
         )
         return True, username
     except Exception as e:
-        # If it still fails, this will show us the specific AWS error
         return False, str(e)
 
+def fetch_live_devices():
+    try:
+        dynamodb = boto3.resource(
+            'dynamodb',
+            region_name=REGION,
+            aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
+            aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"]
+        )
+        table = dynamodb.Table('NetSentinel_Data')
+        response = table.scan()
+        
+        # Format the data to match what our dashboard expects
+        formatted_devices = []
+        for item in response.get('Items', []):
+            formatted_devices.append({
+                "mac": item.get('mac_address', 'Unknown'),
+                "ip": item.get('ip_address', 'Unknown'),
+                "name": item.get('device_name', 'Unknown-Device'),
+                "status": item.get('status', 'PENDING'),
+                "network": item.get('network_id', 'Unknown-Net')
+            })
+        return formatted_devices
+    except Exception as e:
+        st.error(f"DynamoDB Error: {e}")
+        return []
+
 # --- 2. SESSION STATE INITIALIZATION ---
-if "authentication_status" not in st.session_state:
-    st.session_state["authentication_status"] = None
-if "name" not in st.session_state:
-    st.session_state["name"] = None
+if st.session_state["authentication_status"] is not True:
+    st.title("🛡️ NetSentinel Login")
+    with st.form("Login"):
+        u = st.text_input("Email")
+        p = st.text_input("Password", type="password")
+        if st.form_submit_button("Login"):
+            res, msg = check_aws_auth(u, p)
+            if res:
+                st.session_state["authentication_status"] = True
+                st.session_state["name"] = msg
+                st.rerun()
+            else:
+                st.error(f"Login failed: {msg}")
 
 # --- 3. RENDER LOGIN (Cognito Style) ---
 if st.session_state["authentication_status"] is not True:
@@ -67,13 +96,9 @@ if st.session_state["authentication_status"] is True:
     st.title("🛡️ NetSentinel: King Admin")
     st.caption("Cross-Platform Security Command & Control")
 
-    # PRESERVED: Initialize session state for mock data
-    if 'devices' not in st.session_state:
-        st.session_state.devices = [
-            {"mac": "1a:8e:8d:01:02:03", "ip": "192.168.1.5", "name": "HP-Victus", "status": "TRUSTED"},
-            {"mac": "f4:06:12:ab:cd:ef", "ip": "192.168.1.12", "name": "Unknown-Mobile", "status": "PENDING"},
-            {"mac": "00:de:ad:be:ef:01", "ip": "192.168.1.20", "name": "IoT-Device", "status": "PENDING"}
-        ]
+   
+   st.session_state.devices = fetch_live_devices()
+    
     if 'blacklist' not in st.session_state:
         st.session_state.blacklist = []
 
