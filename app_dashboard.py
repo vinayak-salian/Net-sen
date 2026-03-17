@@ -3,6 +3,7 @@ import pandas as pd
 import boto3
 from datetime import datetime
 import pytz
+import streamlit.components.v1 as components
 
 # --- PAGE CONFIG & CSS (Must be first) ---
 st.set_page_config(
@@ -12,15 +13,17 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# 🚨 OVERHAULED CYBER CSS 🚨
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&display=swap');
 
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
     }
 
+    /* Deep Space Background */
     .stApp {
         background-color: #050505;
         background-image: radial-gradient(circle at 50% 0%, #171124 0%, #050505 50%);
@@ -33,6 +36,7 @@ st.markdown("""
         letter-spacing: -0.025em;
     }
     
+    /* Neon Header Text */
     .main-header {
         font-size: 2.5rem;
         background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
@@ -40,71 +44,94 @@ st.markdown("""
         -webkit-text-fill-color: transparent;
         margin-bottom: 0rem;
         padding-bottom: 0rem;
-        font-weight: 700;
+        font-weight: 800;
+        letter-spacing: -1px;
     }
     
+    /* Glowing Status Badge */
     .status-badge {
         display: inline-block;
         padding: 0.35rem 1rem;
         border-radius: 50px;
         background: rgba(16, 185, 129, 0.1);
-        border: 1px solid rgba(16, 185, 129, 0.2);
+        border: 1px solid rgba(16, 185, 129, 0.4);
         color: #10b981;
-        font-size: 0.875rem;
-        font-weight: 500;
+        font-size: 0.85rem;
+        font-weight: 600;
         margin-top: 1rem;
-        box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+        box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+        letter-spacing: 1px;
     }
     
+    /* Advanced Cyber Cards with Neon Accents */
     .cyber-card {
-        background: rgba(15, 23, 42, 0.5);
+        background: rgba(15, 23, 42, 0.6);
         border: 1px solid rgba(255, 255, 255, 0.05);
         border-radius: 8px; 
-        padding: 1.25rem;
+        padding: 1.5rem;
         position: relative;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(12px);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .cyber-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.7);
     }
     .cyber-card::before, .cyber-card::after {
-        content: '';
-        position: absolute;
-        width: 15px; height: 15px;
-        border: 2px solid transparent;
-        pointer-events: none;
+        content: ''; position: absolute; width: 15px; height: 15px;
+        border: 2px solid transparent; pointer-events: none;
     }
     .cyber-card::before {
         top: -1px; left: -1px;
-        border-top-color: var(--card-color);
-        border-left-color: var(--card-color);
+        border-top-color: var(--card-color); border-left-color: var(--card-color);
         border-top-left-radius: 8px;
     }
     .cyber-card::after {
         bottom: -1px; right: -1px;
-        border-bottom-color: var(--card-color);
-        border-right-color: var(--card-color);
+        border-bottom-color: var(--card-color); border-right-color: var(--card-color);
         border-bottom-right-radius: 8px;
     }
     .card-blue { --card-color: #3b82f6; }
     .card-orange { --card-color: #f59e0b; }
     .card-purple { --card-color: #8b5cf6; }
     
-    .cyber-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
-    .cyber-card-title { font-size: 0.75rem; color: #cbd5e1; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-    .cyber-card-icon { font-size: 1.2rem; opacity: 0.8; }
-    .cyber-card-value { font-size: 2.25rem; font-weight: 700; color: #f8fafc; line-height: 1; font-family: 'Fira Code', monospace; }
+    .cyber-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .cyber-card-title { font-size: 0.8rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+    .cyber-card-icon { font-size: 1.5rem; opacity: 0.9; }
+    .cyber-card-value { font-size: 2.5rem; font-weight: 700; color: #f8fafc; line-height: 1; font-family: 'Fira Code', monospace; }
     
+    /* Terminal-Style Tables */
     .dataframe-container {
-        border-radius: 12px;
+        border-radius: 8px;
         overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        background: rgba(15, 23, 42, 0.4);
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        background: rgba(15, 23, 42, 0.7);
         backdrop-filter: blur(10px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
     }
     
-    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; font-family: 'Fira Code', monospace; color: #cbd5e1; }
-    th { text-align: left; padding: 12px 16px; background-color: rgba(30, 41, 59, 0.8); color: #f8fafc; font-weight: 500; text-transform: uppercase; font-size: 0.75rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-    td { padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.02); }
-    tr:hover td { background-color: rgba(139, 92, 246, 0.05); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; font-family: 'Fira Code', monospace; color: #cbd5e1; }
+    th { text-align: left; padding: 14px 16px; background-color: rgba(30, 41, 59, 0.9); color: #8b5cf6; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; border-bottom: 2px solid rgba(139, 92, 246, 0.3); letter-spacing: 1px;}
+    td { padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); }
+    tr:hover td { background-color: rgba(139, 92, 246, 0.08); }
+
+    /* Streamlit specific overrides for buttons and code blocks */
+    div.stButton > button {
+        background-color: rgba(30, 41, 59, 0.8);
+        color: #f8fafc;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+    div.stButton > button:hover {
+        border-color: #8b5cf6;
+        color: #8b5cf6;
+    }
+    code {
+        color: #3b82f6 !important;
+        background: rgba(59, 130, 246, 0.1) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -143,17 +170,56 @@ def fetch_live_devices():
         
         formatted_devices = []
         for item in response.get('Items', []):
+            if 'query' in item: # Skip DNS logs
+                continue
+                
+            raw_time = item.get('last_seen')
+            if raw_time:
+                dt_obj = datetime.fromtimestamp(int(raw_time), ist)
+                last_seen_str = dt_obj.strftime('%H:%M:%S | %d %b')
+            else:
+                last_seen_str = "Initial Scan"
+
             formatted_devices.append({
                 "mac": item.get('mac_address', 'Unknown'),
                 "ip": item.get('ip_address', 'Unknown'),
                 "name": item.get('device_name', 'Unknown-Device'),
                 "status": item.get('status', 'PENDING'),
-                "network": item.get('network_id', 'Unknown-Net')
+                "network": item.get('network_id', 'Unknown-Net'),
+                "last_seen": last_seen_str
             })
         return formatted_devices
     except Exception as e:
         st.error(f"DynamoDB Error: {e}")
         return []
+
+def update_device_status(mac, ip, new_status):
+    try:
+        dynamodb = boto3.resource(
+            'dynamodb',
+            region_name=REGION,
+            aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
+            aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"]
+        )
+        table = dynamodb.Table('NetSentinel_Data')
+        
+        table.update_item(
+            Key={
+                'mac_address': mac,
+                'ip_address': ip
+            },
+            UpdateExpression="SET #st = :val",
+            ExpressionAttributeNames={
+                '#st': 'status'
+            },
+            ExpressionAttributeValues={
+                ':val': new_status
+            }
+        )
+        return True
+    except Exception as e:
+        st.error(f"Failed to update database: {e}")
+        return False
 
 def fetch_live_dns():
     try:
@@ -163,14 +229,11 @@ def fetch_live_dns():
             aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
             aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"]
         )
-        # Changed from NetSentinel_DNS to NetSentinel_Data
         table = dynamodb.Table('NetSentinel_Data')
         response = table.scan()
         
         logs = []
         for item in response.get('Items', []):
-            # Quick filter: Only grab items that actually have DNS data
-            # (so we don't accidentally display devices in the DNS table)
             if 'query' in item:
                 logs.append({
                     "Timestamp": item.get('timestamp', 'Unknown'),
@@ -180,8 +243,8 @@ def fetch_live_dns():
                 })
         return logs
     except Exception:
-        # Fails silently and returns empty array if table doesn't exist yet
         return []
+
 def create_card(title, value, icon, color_class):
     html = f"""
     <div class="cyber-card {color_class}">
@@ -231,25 +294,36 @@ if st.session_state["authentication_status"] is not True:
 # --- 4. SHOW DASHBOARD ---
 if st.session_state["authentication_status"] is True:
     
-    # 🚨 ONLY FETCHING LIVE DATA NOW
+    # FETCH LIVE DATA
     st.session_state.devices = fetch_live_devices()
     live_dns_logs = fetch_live_dns()
     
-    # Header Section
+    # --- HEADER WITH LIVE JS CLOCK ---
     col1, col2 = st.columns([2, 1])
     with col1:
         st.markdown('<div class="main-header">NetSentinel Command & Control</div>', unsafe_allow_html=True)
         st.markdown('<div class="status-badge">🟢 AGENT OPERATIONAL • SECURE LINK</div>', unsafe_allow_html=True)
     with col2:
-        st.markdown(
+        # 🚨 LIVE TICKING CLOCK INJECTION 🚨
+        components.html(
             f"""
-            <div style="text-align: right; padding-top: 1rem; color: #94a3b8; font-family: 'Fira Code', monospace;">
-                <div>SYS_TIME // {datetime.now(ist).strftime('%H:%M:%S IST')}</div>
-                <div>ADMIN // {st.session_state['name']}</div>
+            <div style="text-align: right; padding-top: 0.5rem; color: #94a3b8; font-family: 'Fira Code', monospace; font-size: 14px; font-weight: 500;">
+                <div id="live-clock">SYS_TIME // Loading...</div>
+                <div style="margin-top: 4px; color: #8b5cf6;">ADMIN // {st.session_state['name']}</div>
             </div>
-            """, unsafe_allow_html=True
+            <script>
+                function updateTime() {{
+                    var now = new Date();
+                    var timeString = now.toLocaleTimeString('en-US', {{ hour12: false, timeZone: 'Asia/Kolkata' }});
+                    document.getElementById('live-clock').innerText = "SYS_TIME // " + timeString + " IST";
+                }}
+                setInterval(updateTime, 1000);
+                updateTime();
+            </script>
+            """,
+            height=60
         )
-        if st.button("Terminate Session (Logout)", use_container_width=True):
+        if st.button("Terminate Session", use_container_width=True):
             st.session_state["authentication_status"] = None
             st.rerun()
 
@@ -277,7 +351,7 @@ if st.session_state["authentication_status"] is True:
                 st.rerun()
     else:
         st.markdown("""
-        <div style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1); color: #94a3b8;">
+        <div style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px dashed rgba(139, 92, 246, 0.3); color: #94a3b8; font-family: 'Fira Code', monospace;">
             Containment zone is currently empty. No entities actively banned.
         </div>
         """, unsafe_allow_html=True)
@@ -288,42 +362,47 @@ if st.session_state["authentication_status"] is True:
     st.markdown("### 📡 Live Network Status")
     
     if len(st.session_state.devices) > 0:
-        h1, h2, h3, h4, h5 = st.columns([2, 2, 2, 1, 2])
+        h1, h2, h3, h_time, h4, h5 = st.columns([2, 2, 2, 2, 1, 2])
         h1.write("**Device Name**")
         h2.write("**MAC Address**")
         h3.write("**IP Address**")
+        h_time.write("**Last Seen**")
         h4.write("**Status**")
         h5.write("**Action**")
 
         for index, row in enumerate(st.session_state.devices):
-            if row['mac'] in st.session_state.blacklist:
+            if row['status'] == 'BLOCKED':
                 continue
                 
-            c1, c2, c3, c4, c5 = st.columns([2, 2, 2, 1, 2])
+            c1, c2, c3, c_time, c4, c5 = st.columns([2, 2, 2, 2, 1, 2])
             c1.write(f"**{row['name']}**")
             c2.code(row['mac'])
             c3.code(row['ip'])
+            c_time.markdown(f"<span style='color: #94a3b8; font-family: \"Fira Code\", monospace;'>{row['last_seen']}</span>", unsafe_allow_html=True)
             
             with c4:
                 if row['status'] == "TRUSTED":
-                    st.markdown("<span style='color: #10b981; font-weight: bold;'>TRUSTED</span>", unsafe_allow_html=True)
+                    st.markdown("<span style='color: #10b981; font-weight: bold; letter-spacing: 0.05em;'>TRUSTED</span>", unsafe_allow_html=True)
                 else:
-                    st.markdown("<span style='color: #f59e0b; font-weight: bold;'>PENDING</span>", unsafe_allow_html=True)
+                    st.markdown("<span style='color: #f59e0b; font-weight: bold; letter-spacing: 0.05em;'>PENDING</span>", unsafe_allow_html=True)
                     
             with c5:
                 btn_col1, btn_col2 = st.columns(2)
-                if row['status'] == "PENDING":
-                    if btn_col1.button("✅ Trust", key=f"t_{index}"):
-                        pass
-                else:
-                    btn_col1.button("Done", disabled=True, key=f"v_{index}")
                 
-                if btn_col2.button("🚫 Block", key=f"b_{index}"):
-                    st.session_state.blacklist.append(row['mac'])
-                    st.rerun()
+                if row['status'] == "PENDING":
+                    if btn_col1.button("✅ Trust", key=f"t_{row['mac']}"):
+                        if update_device_status(row['mac'], row['ip'], "TRUSTED"):
+                            st.rerun() 
+                else:
+                    btn_col1.button("Done", disabled=True, key=f"v_{row['mac']}")
+                
+                if btn_col2.button("🚫 Block", key=f"b_{row['mac']}"):
+                    if update_device_status(row['mac'], row['ip'], "BLOCKED"):
+                        st.session_state.blacklist.append(row['mac'])
+                        st.rerun()
     else:
         st.markdown("""
-        <div style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1); color: #94a3b8;">
+        <div style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px dashed rgba(139, 92, 246, 0.3); color: #94a3b8; font-family: 'Fira Code', monospace;">
             No devices currently detected in the network.
         </div>
         """, unsafe_allow_html=True)
@@ -332,7 +411,7 @@ if st.session_state["authentication_status"] is True:
 
     # Traffic Hearing (LIVE FETCH)
     st.markdown("### 👂 Live DNS Anomaly Feed")
-    st.markdown("<p style='color: #94a3b8; margin-bottom: 1rem;'>Real-time interception of DNS queries.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94a3b8; margin-bottom: 1rem; font-family: \"Fira Code\", monospace;'>Real-time interception of DNS queries.</p>", unsafe_allow_html=True)
     
     if live_dns_logs:
         df_dns = pd.DataFrame(live_dns_logs)
@@ -340,13 +419,13 @@ if st.session_state["authentication_status"] is True:
         st.markdown(html_table, unsafe_allow_html=True)
     else:
         st.markdown("""
-        <div style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1); color: #94a3b8;">
+        <div style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px dashed rgba(139, 92, 246, 0.3); color: #94a3b8; font-family: 'Fira Code', monospace;">
             Awaiting live DNS telemetry. No queries intercepted yet.
         </div>
         """, unsafe_allow_html=True)
 
     st.markdown("""
-    <div style="text-align: center; margin-top: 3rem; color: #475569; font-size: 0.875rem; font-family: 'Fira Code', monospace;">
+    <div style="text-align: center; margin-top: 3rem; color: #475569; font-size: 0.75rem; font-family: 'Fira Code', monospace; letter-spacing: 0.1em;">
         NETSENTINEL CORE BUILD 1.5.0 • ENCRYPTED CONNECTION • ZERO-TRUST ARCHITECTURE
     </div>
     """, unsafe_allow_html=True)
