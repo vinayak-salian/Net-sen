@@ -97,7 +97,7 @@ if st.session_state["authentication_status"] is True:
     st.caption("Cross-Platform Security Command & Control")
 
    
-   st.session_state.devices = fetch_live_devices()
+    st.session_state.devices = fetch_live_devices()
     
     if 'blacklist' not in st.session_state:
         st.session_state.blacklist = []
