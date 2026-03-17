@@ -205,8 +205,7 @@ def update_device_status(mac, ip, new_status):
         
         table.update_item(
             Key={
-                'mac_address': mac,
-                'ip_address': ip
+                'mac_address': mac  # <-- ONLY use mac_address here
             },
             UpdateExpression="SET #st = :val",
             ExpressionAttributeNames={
