@@ -73,6 +73,53 @@ The Lesson: Windows is not optimized to act as a stealth network router. While t
 
 
 
+
+ Here is the final piece of the puzzle. This text provides clear, professional deployment instructions that prove you understand how to orchestrate a full cloud environment, capped off with an industry-standard security disclaimer. 
+
+Copy and paste this into the bottom of your `README.md` file:
+
+***
+
+## ⚙️ Deployment & Setup (Open-Source Template)
+*Note: This repository is structured as an open-source template. Personal cloud infrastructure variables (API keys, Cognito IDs, and local subnets) have been abstracted via `.gitignore`.*
+
+### Prerequisites
+* Python 3.8+ installed on the host machine.
+* An active AWS Account with permissions to provision API Gateway, Lambda, DynamoDB, and Cognito.
+
+### 1. Cloud Infrastructure Provisioning
+* **DynamoDB:** Create a table named `NetSentinel_Data` with `mac_address` as the primary Partition Key (String). Enable Time-to-Live (TTL) on the `expire_at` attribute to allow automated purging of old DNS telemetry.
+* **AWS Lambda & API Gateway:** Create a Python-based Lambda function and upload the provided `lambda_dispatcher.py` code. Attach an HTTP API Gateway trigger to this function to create your public endpoint.
+* **AWS Cognito:** Provision a Cognito User Pool to generate a secure `Client ID` for dashboard authentication.
+
+### 2. Environment Configuration
+* Clone this repository to your local machine.
+* Rename `config.example.json` to `config.json`. Insert your newly generated AWS API Gateway URL, your Cognito Client ID, and your target subnet (e.g., `192.168.1.0/24`).
+* For the Streamlit dashboard, create a `.streamlit/secrets.toml` file and securely add your `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+
+### 3. Dashboard Deployment
+You can run the Command & Control interface locally or host it via Streamlit Community Cloud:
+```bash
+pip install streamlit pandas boto3 pytz
+streamlit run app_dashboard.py
+```
+
+### 4. Agent Installation (Target Host)
+To deploy the NAC agent on a Windows machine:
+1. Navigate to the project directory.
+2. Right-click the `install_and_run.bat` file and select **Run as Administrator**.
+3. The batch script will automatically install the required dependencies (via `requirements.txt`), enable Windows IP Routing to prevent network blackholing, and launch the Scapy agent stealthily. 
+
+---
+
+## ⚠️ Legal & Ethical Disclaimer
+**This project was built strictly for educational purposes, cloud architecture demonstration, and personal cybersecurity portfolio development.** NetSentinel utilizes aggressive network techniques, including ARP cache poisoning (ARP spoofing) and active packet interception. It is designed to be deployed **only** on isolated homelabs or network environments where you have explicit, written administrative authorization. 
+
+Do not deploy, test, or execute this agent on public Wi-Fi, corporate infrastructure, or any network without explicit consent. The author assumes no liability and is not responsible for any misuse or damage caused by this program.
+
+
+
+
  
 
 
