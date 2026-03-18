@@ -15,6 +15,7 @@ Authentication: AWS Cognito (Secure C2 access via User Pools & JWT).
 <LOGIN PAGE>
 
 <img width="1911" height="831" alt="Screenshot 2026-03-18 143139" src="https://github.com/user-attachments/assets/993fadb9-35b3-4ab9-91eb-4ee6d63f69f0" />
+
 < CONTAINMENT ZONE = Blocked devices>
 < SESSION QUERIES = TRAFFIC VIEWING OF 'X' DEVICE>
 
