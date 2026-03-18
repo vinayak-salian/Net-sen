@@ -113,4 +113,4 @@ To deploy the NAC agent on a Windows machine:
 **This project was built strictly for educational purposes, cloud architecture demonstration, and personal cybersecurity portfolio development.** NetSentinel utilizes aggressive network techniques, including ARP cache poisoning (ARP spoofing) and active packet interception. It is designed to be deployed **only** on isolated homelabs or network environments where you have explicit, written administrative authorization. 
 
 Do not deploy, test, or execute this agent on public Wi-Fi, corporate infrastructure, or any network without explicit consent. The author assumes no liability and is not responsible for any misuse or damage caused by this program.
-```
+
