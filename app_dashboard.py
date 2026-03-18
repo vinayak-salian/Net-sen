@@ -17,7 +17,11 @@ st.markdown("""
     .stApp { background-color: #050505; background-image: radial-gradient(circle at 50% 0%, #171124 0%, #050505 50%); color: #e2e8f0; }
     h1, h2, h3 { color: #f8fafc; font-weight: 600 !important; letter-spacing: -0.025em; }
     .main-header { font-size: 2.5rem; background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0rem; padding-bottom: 0rem; font-weight: 800; letter-spacing: -1px; }
-    .status-badge { display: inline-block; padding: 0.35rem 1rem; border-radius: 50px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); color: #10b981; font-size: 0.85rem; font-weight: 600; margin-top: 1rem; box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); letter-spacing: 1px; }
+    
+    /* 🚨 Dynamic Badges 🚨 */
+    .status-badge-green { display: inline-block; padding: 0.35rem 1rem; border-radius: 50px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); color: #10b981; font-size: 0.85rem; font-weight: 600; margin-top: 1rem; box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); letter-spacing: 1px; }
+    .status-badge-red { display: inline-block; padding: 0.35rem 1rem; border-radius: 50px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.4); color: #ef4444; font-size: 0.85rem; font-weight: 600; margin-top: 1rem; box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); letter-spacing: 1px; }
+    
     .cyber-card { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 1.5rem; position: relative; box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5); backdrop-filter: blur(12px); transition: transform 0.2s ease, box-shadow 0.2s ease; }
     .cyber-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.7); }
     .cyber-card::before, .cyber-card::after { content: ''; position: absolute; width: 15px; height: 15px; border: 2px solid transparent; pointer-events: none; }
@@ -61,10 +65,28 @@ def fetch_live_devices():
         for item in response.get('Items', []):
             if 'query' in item: continue
             raw_time = item.get('last_seen')
-            last_seen_str = datetime.fromtimestamp(int(raw_time), ist).strftime('%H:%M:%S | %d %b') if raw_time else "Initial Scan"
-            formatted_devices.append({"mac": item.get('mac_address', 'Unknown'), "ip": item.get('ip_address', 'Unknown'), "name": item.get('device_name', 'Unknown-Device'), "status": item.get('status', 'PENDING'), "last_seen": last_seen_str})
+            
+            # Store raw time for heartbeat check later
+            formatted_devices.append({
+                "mac": item.get('mac_address', 'Unknown'), 
+                "ip": item.get('ip_address', 'Unknown'), 
+                "name": item.get('device_name', 'Unknown-Device'), 
+                "status": item.get('status', 'PENDING'), 
+                "raw_time": int(raw_time) if raw_time else 0
+            })
         return formatted_devices
     except: return []
+
+# 🚨 THE NEW AGENT HEARTBEAT CHECK 🚨
+def is_agent_alive(devices):
+    if not devices: return False
+    current_time = int(time.time())
+    # Find the most recently seen device
+    newest_update = max([d['raw_time'] for d in devices])
+    # If the last update was less than 3 minutes (180 seconds) ago, agent is alive
+    if (current_time - newest_update) < 180:
+        return True
+    return False
 
 def update_device_status(mac, ip, new_status, new_name=None):
     try:
@@ -115,7 +137,6 @@ if 'blacklist' not in st.session_state: st.session_state.blacklist = []
 if 'devices' not in st.session_state: st.session_state.devices = []
 if 'dns_filter_ip' not in st.session_state: st.session_state.dns_filter_ip = None
 if 'dns_filter_mac' not in st.session_state: st.session_state.dns_filter_mac = None
-# 🚨 NEW: The Time Anchor to block old zombie data 
 if 'dns_start_time' not in st.session_state: st.session_state.dns_start_time = 0
 
 # --- 3. RENDER LOGIN ---
@@ -139,7 +160,14 @@ if st.session_state["authentication_status"] is True:
     live_dns_logs = fetch_live_dns()
     
     col1, col2 = st.columns([2, 1])
-    with col1: st.markdown('<div class="main-header">NetSentinel Command & Control</div><div class="status-badge">🟢 AGENT OPERATIONAL • SECURE LINK</div>', unsafe_allow_html=True)
+    with col1: 
+        st.markdown('<div class="main-header">NetSentinel Command & Control</div>', unsafe_allow_html=True)
+        # 🚨 THE DYNAMIC STATUS BADGE LOGIC 🚨
+        if is_agent_alive(st.session_state.devices):
+            st.markdown('<div class="status-badge-green">🟢 AGENT OPERATIONAL • SECURE LINK</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="status-badge-red">🔴 AGENT OFFLINE • CONNECTION SEVERED</div>', unsafe_allow_html=True)
+            
     with col2:
         components.html(f'<div style="text-align: right; padding-top: 0.5rem; color: #94a3b8; font-family: \'Fira Code\', monospace; font-size: 14px; font-weight: 500;"><div id="live-clock">SYS_TIME // Loading...</div><div style="margin-top: 4px; color: #8b5cf6;">ADMIN // {st.session_state["name"]}</div></div><script>function updateTime() {{ var now = new Date(); document.getElementById("live-clock").innerText = "SYS_TIME // " + now.toLocaleTimeString("en-US", {{ hour12: false, timeZone: "Asia/Kolkata" }}) + " IST"; }} setInterval(updateTime, 1000); updateTime();</script>', height=60)
         if st.button("Terminate Session", use_container_width=True): st.session_state["authentication_status"] = None; st.rerun()
@@ -182,7 +210,15 @@ if st.session_state["authentication_status"] is True:
                 if row['status'] == "PENDING": custom_name = st.text_input("Name", value=row['name'], key=f"name_{row['mac']}", label_visibility="collapsed")
                 else: st.write(f"**{row['name']}**"); custom_name = row['name'] 
             
-            c2.code(row['mac']); c3.code(row['ip']); c_time.markdown(f"<span style='color: #94a3b8; font-family: \"Fira Code\", monospace;'>{row['last_seen']}</span>", unsafe_allow_html=True)
+            c2.code(row['mac']); c3.code(row['ip'])
+            
+            # Format the display time
+            if row['raw_time'] > 0:
+                display_time = datetime.fromtimestamp(row['raw_time'], ist).strftime('%H:%M:%S | %d %b')
+            else:
+                display_time = "Initial Scan"
+                
+            c_time.markdown(f"<span style='color: #94a3b8; font-family: \"Fira Code\", monospace;'>{display_time}</span>", unsafe_allow_html=True)
             
             with c4:
                 if row['status'] == "TRUSTED": st.markdown("<span style='color: #10b981; font-weight: bold; letter-spacing: 0.05em;'>TRUSTED</span>", unsafe_allow_html=True)
@@ -203,10 +239,9 @@ if st.session_state["authentication_status"] is True:
                     else:
                         if bc3.button("🔍 DNS", key=f"dns_{row['mac']}"):
                             if st.session_state.dns_filter_mac: toggle_dns_monitoring(st.session_state.dns_filter_mac, False)
-                            toggle_dns_monitoring(row['mac'], True)
-                            st.session_state.dns_filter_ip = row['ip']; st.session_state.dns_filter_mac = row['mac']
-                            # 🚨 FIX: Anchoring time to block old data 🚨
-                            st.session_state.dns_start_time = int(time.time())
+                            toggle_dns_monitoring(row['mac'], True); st.session_state.dns_filter_ip = row['ip']; st.session_state.dns_filter_mac = row['mac']
+                            # 🚨 FIX: -60 SECOND BUFFER FOR CLOCK DRIFT 🚨
+                            st.session_state.dns_start_time = int(time.time()) - 60
                             st.rerun()
                 else:
                     bc1, bc2 = st.columns(2)
@@ -220,9 +255,9 @@ if st.session_state["authentication_status"] is True:
                     else:
                         if bc2.button("🔍 DNS", key=f"dns_{row['mac']}"):
                             if st.session_state.dns_filter_mac: toggle_dns_monitoring(st.session_state.dns_filter_mac, False)
-                            toggle_dns_monitoring(row['mac'], True)
-                            st.session_state.dns_filter_ip = row['ip']; st.session_state.dns_filter_mac = row['mac']
-                            st.session_state.dns_start_time = int(time.time())
+                            toggle_dns_monitoring(row['mac'], True); st.session_state.dns_filter_ip = row['ip']; st.session_state.dns_filter_mac = row['mac']
+                            # 🚨 FIX: -60 SECOND BUFFER FOR CLOCK DRIFT 🚨
+                            st.session_state.dns_start_time = int(time.time()) - 60
                             st.rerun()
     else: st.markdown("<div style=\"padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px dashed rgba(139, 92, 246, 0.3); color: #94a3b8; font-family: 'Fira Code', monospace;\">No devices currently detected.</div>", unsafe_allow_html=True)
 
@@ -239,7 +274,6 @@ if st.session_state["authentication_status"] is True:
             if st.session_state.dns_filter_mac: toggle_dns_monitoring(st.session_state.dns_filter_mac, False)
             st.session_state.dns_filter_ip = None; st.session_state.dns_filter_mac = None; st.rerun()
             
-        # 🚨 FIX: Only show logs from this IP that happened AFTER button was pressed 🚨
         for log in live_dns_logs:
             if log['Source IP'] == st.session_state.dns_filter_ip:
                 if int(log['Timestamp']) >= st.session_state.dns_start_time:
