@@ -3,6 +3,7 @@ import pandas as pd
 import boto3
 from datetime import datetime
 import pytz
+import time
 import streamlit.components.v1 as components
 
 # --- PAGE CONFIG & CSS ---
@@ -82,19 +83,17 @@ def toggle_dns_monitoring(mac, state_boolean):
     except Exception as e: st.error(f"Failed to issue C2 command: {e}")
 
 def fetch_live_dns():
-    """🚨 FIX: Time-based Filtering. Only pulls logs from the last 5 minutes."""
     try:
         table = boto3.resource('dynamodb', region_name=REGION, aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"], aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"]).Table('NetSentinel_Data')
         response = table.scan()
         
         current_time = int(time.time())
-        five_minutes_ago = current_time - 300 # 300 seconds
+        five_minutes_ago = current_time - 300 
         
         logs = []
         for item in response.get('Items', []):
             if 'query' in item:
                 log_time = item.get('timestamp')
-                # Only include the log if it exists and happened in the last 5 mins
                 if log_time and int(log_time) > five_minutes_ago:
                     logs.append({
                         "Timestamp": log_time,
@@ -102,7 +101,6 @@ def fetch_live_dns():
                         "Query": item.get('query', 'Unknown')
                     })
                     
-        # Sort logs so the newest queries appear at the top
         logs = sorted(logs, key=lambda x: int(x['Timestamp']), reverse=True)
         return logs
     except Exception: return []
@@ -117,6 +115,8 @@ if 'blacklist' not in st.session_state: st.session_state.blacklist = []
 if 'devices' not in st.session_state: st.session_state.devices = []
 if 'dns_filter_ip' not in st.session_state: st.session_state.dns_filter_ip = None
 if 'dns_filter_mac' not in st.session_state: st.session_state.dns_filter_mac = None
+# 🚨 NEW: The Time Anchor to block old zombie data 
+if 'dns_start_time' not in st.session_state: st.session_state.dns_start_time = 0
 
 # --- 3. RENDER LOGIN ---
 if st.session_state["authentication_status"] is not True:
@@ -149,7 +149,9 @@ if st.session_state["authentication_status"] is True:
     m1, m2, m3 = st.columns(3)
     with m1: st.markdown(create_card("LIVE DEVICES", len(st.session_state.devices), "📡", "card-blue"), unsafe_allow_html=True)
     with m2: st.markdown(create_card("CONTAINMENT ZONE", len(st.session_state.blacklist), "🚫", "card-orange"), unsafe_allow_html=True)
-    with m3: st.markdown(create_card("DNS QUERIES", len(live_dns_logs), "🔗", "card-purple"), unsafe_allow_html=True)
+    
+    active_queries = [log for log in live_dns_logs if int(log['Timestamp']) >= st.session_state.dns_start_time] if st.session_state.dns_filter_ip else []
+    with m3: st.markdown(create_card("SESSION QUERIES", len(active_queries), "🔗", "card-purple"), unsafe_allow_html=True)
 
     st.markdown("<br><hr style='border-color: rgba(255,255,255,0.05);'><br>", unsafe_allow_html=True)
 
@@ -162,8 +164,7 @@ if st.session_state["authentication_status"] is True:
             b_col1, b_col2 = st.columns([4, 1])
             b_col1.error(f"BLOCKED MAC: `{mac}` - Routing to void.")
             if b_col2.button("🔓 Unblock", key=f"unblock_{mac}"):
-                if update_device_status(mac, "Unknown", "PENDING"): 
-                    st.session_state.blacklist.remove(mac); st.rerun()
+                if update_device_status(mac, "Unknown", "PENDING"): st.session_state.blacklist.remove(mac); st.rerun()
     else: st.markdown("<div style=\"padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px dashed rgba(239, 68, 68, 0.3); color: #94a3b8; font-family: 'Fira Code', monospace;\">Containment zone is currently empty.</div>", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -202,7 +203,11 @@ if st.session_state["authentication_status"] is True:
                     else:
                         if bc3.button("🔍 DNS", key=f"dns_{row['mac']}"):
                             if st.session_state.dns_filter_mac: toggle_dns_monitoring(st.session_state.dns_filter_mac, False)
-                            toggle_dns_monitoring(row['mac'], True); st.session_state.dns_filter_ip = row['ip']; st.session_state.dns_filter_mac = row['mac']; st.rerun()
+                            toggle_dns_monitoring(row['mac'], True)
+                            st.session_state.dns_filter_ip = row['ip']; st.session_state.dns_filter_mac = row['mac']
+                            # 🚨 FIX: Anchoring time to block old data 🚨
+                            st.session_state.dns_start_time = int(time.time())
+                            st.rerun()
                 else:
                     bc1, bc2 = st.columns(2)
                     if bc1.button("🚫 Block", key=f"b_{row['mac']}"):
@@ -215,28 +220,30 @@ if st.session_state["authentication_status"] is True:
                     else:
                         if bc2.button("🔍 DNS", key=f"dns_{row['mac']}"):
                             if st.session_state.dns_filter_mac: toggle_dns_monitoring(st.session_state.dns_filter_mac, False)
-                            toggle_dns_monitoring(row['mac'], True); st.session_state.dns_filter_ip = row['ip']; st.session_state.dns_filter_mac = row['mac']; st.rerun()
-    else:
-        st.markdown("<div style=\"padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px dashed rgba(139, 92, 246, 0.3); color: #94a3b8; font-family: 'Fira Code', monospace;\">No devices currently detected.</div>", unsafe_allow_html=True)
+                            toggle_dns_monitoring(row['mac'], True)
+                            st.session_state.dns_filter_ip = row['ip']; st.session_state.dns_filter_mac = row['mac']
+                            st.session_state.dns_start_time = int(time.time())
+                            st.rerun()
+    else: st.markdown("<div style=\"padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px dashed rgba(139, 92, 246, 0.3); color: #94a3b8; font-family: 'Fira Code', monospace;\">No devices currently detected.</div>", unsafe_allow_html=True)
 
     st.markdown("<br><hr style='border-color: rgba(255,255,255,0.05);'><br>", unsafe_allow_html=True)
 
     st.markdown("### 👂 Live DNS Anomaly Feed")
     st.markdown("<p style='color: #94a3b8; margin-bottom: 1rem; font-family: \"Fira Code\", monospace;'>On-Demand telemetry feed.</p>", unsafe_allow_html=True)
     
+    display_logs = []
     if st.session_state.dns_filter_ip:
         f_col1, f_col2 = st.columns([4, 1])
-        f_col1.info(f"🔍 **Currently Listening to IP:** `{st.session_state.dns_filter_ip}` (Only showing queries from the last 5 minutes)")
+        f_col1.info(f"🔍 **Currently Listening to IP:** `{st.session_state.dns_filter_ip}` (Tracking active session only)")
         if f_col2.button("✖️ Stop Listening", use_container_width=True):
-            if st.session_state.dns_filter_mac:
-                toggle_dns_monitoring(st.session_state.dns_filter_mac, False)
-            st.session_state.dns_filter_ip = None
-            st.session_state.dns_filter_mac = None
-            st.rerun()
+            if st.session_state.dns_filter_mac: toggle_dns_monitoring(st.session_state.dns_filter_mac, False)
+            st.session_state.dns_filter_ip = None; st.session_state.dns_filter_mac = None; st.rerun()
             
-        display_logs = [log for log in live_dns_logs if log['Source IP'] == st.session_state.dns_filter_ip]
-    else:
-        display_logs = [] # 🚨 FIX: Shows nothing if no device is targeted
+        # 🚨 FIX: Only show logs from this IP that happened AFTER button was pressed 🚨
+        for log in live_dns_logs:
+            if log['Source IP'] == st.session_state.dns_filter_ip:
+                if int(log['Timestamp']) >= st.session_state.dns_start_time:
+                    display_logs.append(log)
 
     if display_logs:
         log_col1, log_col2, log_col3, log_col4 = st.columns([1.5, 2, 3, 1.5])
@@ -244,26 +251,18 @@ if st.session_state["authentication_status"] is True:
         
         for index, log in enumerate(display_logs):
             lc1, lc2, lc3, lc4 = st.columns([1.5, 2, 3, 1.5])
-            
-            log_time = log['Timestamp']
-            if isinstance(log_time, (int, float)) or (isinstance(log_time, str) and log_time.isdigit()):
-                log_time = datetime.fromtimestamp(int(log_time), ist).strftime('%H:%M:%S | %d %b')
-                
+            log_time = datetime.fromtimestamp(int(log['Timestamp']), ist).strftime('%H:%M:%S | %d %b')
             lc1.markdown(f"<span style='color: #94a3b8; font-family: \"Fira Code\", monospace;'>{log_time}</span>", unsafe_allow_html=True)
             lc2.code(log['Source IP']); lc3.markdown(f"<span style='color: #3b82f6;'>{log['Query']}</span>", unsafe_allow_html=True)
-            
             with lc4:
                 if st.button("⚡ Terminate", key=f"term_{index}_{log['Source IP']}_{log['Query']}"):
                     offending_mac = None
                     for device in st.session_state.devices:
                         if device['ip'] == log['Source IP']: offending_mac = device['mac']; break
-                            
                     if offending_mac:
                         if update_device_status(offending_mac, log['Source IP'], "BLOCKED"):
-                            if offending_mac not in st.session_state.blacklist:
-                                st.session_state.blacklist.append(offending_mac)
-                            st.success(f"⚠️ TARGET ISOLATED.")
-                            import time; time.sleep(1.5); st.rerun()
+                            if offending_mac not in st.session_state.blacklist: st.session_state.blacklist.append(offending_mac)
+                            st.success(f"⚠️ TARGET ISOLATED."); import time; time.sleep(1.5); st.rerun()
     else:
         if st.session_state.dns_filter_ip:
             st.markdown("<div style=\"padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px dashed rgba(139, 92, 246, 0.3); color: #94a3b8; font-family: 'Fira Code', monospace;\">Listening... Awaiting new DNS queries from target.</div>", unsafe_allow_html=True)
