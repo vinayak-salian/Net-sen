@@ -5,7 +5,7 @@ from datetime import datetime
 import pytz
 import streamlit.components.v1 as components
 
-# --- PAGE CONFIG & CSS (Must be first) ---
+# --- PAGE CONFIG & CSS ---
 st.set_page_config(
     page_title="NetSentinel C&C",
     page_icon="🛡️",
@@ -182,7 +182,6 @@ def update_device_status(mac, ip, new_status, new_name=None):
         st.error(f"Failed to update database: {e}")
         return False
 
-# 🚨 THE NEW C2 COMMAND ISSUER 🚨
 def toggle_dns_monitoring(mac, state_boolean):
     try:
         dynamodb = boto3.resource(
@@ -303,8 +302,13 @@ if st.session_state["authentication_status"] is True:
     st.markdown("<br><hr style='border-color: rgba(255,255,255,0.05);'><br>", unsafe_allow_html=True)
 
     st.markdown("### 🚫 Active Mitigation (Blacklist)")
-    if st.session_state.blacklist:
-        for mac in st.session_state.blacklist:
+    
+    # 🚨 FIX: Purge duplicates to stop the "Duplicate Element Key" error 🚨
+    unique_blacklist = list(set(st.session_state.blacklist))
+    st.session_state.blacklist = unique_blacklist
+    
+    if unique_blacklist:
+        for mac in unique_blacklist:
             b_col1, b_col2 = st.columns([4, 1])
             b_col1.error(f"BLOCKED MAC: `{mac}` - Routing to void.")
             if b_col2.button("🔓 Unblock", key=f"unblock_{mac}"):
@@ -354,6 +358,7 @@ if st.session_state["authentication_status"] is True:
                     st.markdown("<span style='color: #f59e0b; font-weight: bold; letter-spacing: 0.05em;'>PENDING</span>", unsafe_allow_html=True)
                     
             with c5:
+                # 🚨 FIX: Reversing the DNS monitoring button logic 🚨
                 if row['status'] == "PENDING":
                     bc1, bc2, bc3 = st.columns(3)
                     if bc1.button("✅ Trust", key=f"t_{row['mac']}"):
@@ -361,26 +366,46 @@ if st.session_state["authentication_status"] is True:
                             st.rerun() 
                     if bc2.button("🚫 Block", key=f"b_{row['mac']}"):
                         if update_device_status(row['mac'], row['ip'], "BLOCKED"):
-                            st.session_state.blacklist.append(row['mac'])
+                            if row['mac'] not in st.session_state.blacklist:
+                                st.session_state.blacklist.append(row['mac'])
                             st.rerun()
-                    if bc3.button("🔍 DNS", key=f"dns_{row['mac']}"):
-                        # ISSUE THE COMMAND
-                        toggle_dns_monitoring(row['mac'], True)
-                        st.session_state.dns_filter_ip = row['ip']
-                        st.session_state.dns_filter_mac = row['mac']
-                        st.rerun()
+                            
+                    if st.session_state.dns_filter_mac == row['mac']:
+                        if bc3.button("✖️ Stop", key=f"stop_dns_{row['mac']}"):
+                            toggle_dns_monitoring(row['mac'], False)
+                            st.session_state.dns_filter_ip = None
+                            st.session_state.dns_filter_mac = None
+                            st.rerun()
+                    else:
+                        if bc3.button("🔍 DNS", key=f"dns_{row['mac']}"):
+                            if st.session_state.dns_filter_mac: # Stop listening to previous target first
+                                toggle_dns_monitoring(st.session_state.dns_filter_mac, False)
+                            toggle_dns_monitoring(row['mac'], True)
+                            st.session_state.dns_filter_ip = row['ip']
+                            st.session_state.dns_filter_mac = row['mac']
+                            st.rerun()
                 else:
                     bc1, bc2 = st.columns(2)
                     if bc1.button("🚫 Block", key=f"b_{row['mac']}"):
                         if update_device_status(row['mac'], row['ip'], "BLOCKED"):
-                            st.session_state.blacklist.append(row['mac'])
+                            if row['mac'] not in st.session_state.blacklist:
+                                st.session_state.blacklist.append(row['mac'])
                             st.rerun()
-                    if bc2.button("🔍 DNS", key=f"dns_{row['mac']}"):
-                        # ISSUE THE COMMAND
-                        toggle_dns_monitoring(row['mac'], True)
-                        st.session_state.dns_filter_ip = row['ip']
-                        st.session_state.dns_filter_mac = row['mac']
-                        st.rerun()
+                            
+                    if st.session_state.dns_filter_mac == row['mac']:
+                        if bc2.button("✖️ Stop", key=f"stop_dns_{row['mac']}"):
+                            toggle_dns_monitoring(row['mac'], False)
+                            st.session_state.dns_filter_ip = None
+                            st.session_state.dns_filter_mac = None
+                            st.rerun()
+                    else:
+                        if bc2.button("🔍 DNS", key=f"dns_{row['mac']}"):
+                            if st.session_state.dns_filter_mac:
+                                toggle_dns_monitoring(st.session_state.dns_filter_mac, False)
+                            toggle_dns_monitoring(row['mac'], True)
+                            st.session_state.dns_filter_ip = row['ip']
+                            st.session_state.dns_filter_mac = row['mac']
+                            st.rerun()
                     
     else:
         st.markdown("""
@@ -395,16 +420,6 @@ if st.session_state["authentication_status"] is True:
     st.markdown("<p style='color: #94a3b8; margin-bottom: 1rem; font-family: \"Fira Code\", monospace;'>On-Demand telemetry feed.</p>", unsafe_allow_html=True)
     
     if st.session_state.dns_filter_ip:
-        f_col1, f_col2 = st.columns([4, 1])
-        f_col1.info(f"🔍 **Currently Filtering & Listening to IP:** `{st.session_state.dns_filter_ip}`")
-        if f_col2.button("✖️ Stop & Clear Filter", use_container_width=True):
-            # REVOKE THE COMMAND
-            if st.session_state.dns_filter_mac:
-                toggle_dns_monitoring(st.session_state.dns_filter_mac, False)
-            st.session_state.dns_filter_ip = None
-            st.session_state.dns_filter_mac = None
-            st.rerun()
-            
         display_logs = [log for log in live_dns_logs if log['Source IP'] == st.session_state.dns_filter_ip]
     else:
         display_logs = live_dns_logs
@@ -429,7 +444,8 @@ if st.session_state["authentication_status"] is True:
             lc3.markdown(f"<span style='color: #3b82f6;'>{log['Query']}</span>", unsafe_allow_html=True)
             
             with lc4:
-                if st.button("⚡ Terminate", key=f"term_{index}_{log['Source IP']}_{log['Query']}"):
+                # We use index in the key to ensure it's completely unique to prevent duplicate key crashes here too
+                if st.button("⚡ Terminate", key=f"term_{index}_{log['Source IP']}"):
                     offending_mac = None
                     for device in st.session_state.devices:
                         if device['ip'] == log['Source IP']:
@@ -438,7 +454,8 @@ if st.session_state["authentication_status"] is True:
                             
                     if offending_mac:
                         if update_device_status(offending_mac, log['Source IP'], "BLOCKED"):
-                            st.session_state.blacklist.append(offending_mac)
+                            if offending_mac not in st.session_state.blacklist:
+                                st.session_state.blacklist.append(offending_mac)
                             st.success(f"⚠️ TARGET ISOLATED.")
                             import time
                             time.sleep(1.5)
