@@ -409,22 +409,52 @@ if st.session_state["authentication_status"] is True:
     st.markdown("<br><hr style='border-color: rgba(255,255,255,0.05);'><br>", unsafe_allow_html=True)
 
     # Traffic Hearing (LIVE FETCH)
+    # Traffic Hearing (LIVE FETCH & TERMINATION)
     st.markdown("### 👂 Live DNS Anomaly Feed")
     st.markdown("<p style='color: #94a3b8; margin-bottom: 1rem; font-family: \"Fira Code\", monospace;'>Real-time interception of DNS queries.</p>", unsafe_allow_html=True)
     
     if live_dns_logs:
-        df_dns = pd.DataFrame(live_dns_logs)
-        html_table = f'<div class="dataframe-container">{df_dns.to_html(index=False, classes="custom-table")}</div>'
-        st.markdown(html_table, unsafe_allow_html=True)
+        # Create a dynamic table for the logs
+        log_col1, log_col2, log_col3, log_col4 = st.columns([1.5, 2, 3, 1.5])
+        log_col1.write("**Time**")
+        log_col2.write("**Source IP**")
+        log_col3.write("**Query (Target)**")
+        log_col4.write("**Action**")
+        
+        for index, log in enumerate(live_dns_logs):
+            lc1, lc2, lc3, lc4 = st.columns([1.5, 2, 3, 1.5])
+            lc1.markdown(f"<span style='color: #94a3b8; font-family: \"Fira Code\", monospace;'>{log['Timestamp']}</span>", unsafe_allow_html=True)
+            lc2.code(log['Source IP'])
+            lc3.markdown(f"<span style='color: #3b82f6;'>{log['Query']}</span>", unsafe_allow_html=True)
+            
+            with lc4:
+                # The Terminate Button
+                if st.button("⚡ Terminate", key=f"term_{index}_{log['Source IP']}"):
+                    
+                    # 1. Look up the MAC address associated with this offending IP
+                    offending_mac = None
+                    for device in st.session_state.devices:
+                        if device['ip'] == log['Source IP']:
+                            offending_mac = device['mac']
+                            break
+                            
+                    # 2. If we found the device, execute the ban
+                    if offending_mac:
+                        if update_device_status(offending_mac, log['Source IP'], "BLOCKED"):
+                            # Update local state so UI refreshes correctly
+                            st.session_state.blacklist.append(offending_mac)
+                            # Show the temporary ban notification
+                            st.success(f"⚠️ TARGET ISOLATED: IP {log['Source IP']} has been routed to the Containment Zone for visiting {log['Query']}.")
+                            # Rerun after a short delay so user sees the message
+                            import time
+                            time.sleep(2)
+                            st.rerun()
+                    else:
+                        st.error("Cannot terminate: Device IP not found in active network list.")
+
     else:
         st.markdown("""
         <div style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px dashed rgba(139, 92, 246, 0.3); color: #94a3b8; font-family: 'Fira Code', monospace;">
             Awaiting live DNS telemetry. No queries intercepted yet.
         </div>
         """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div style="text-align: center; margin-top: 3rem; color: #475569; font-size: 0.75rem; font-family: 'Fira Code', monospace; letter-spacing: 0.1em;">
-        NETSENTINEL CORE BUILD 1.5.0 • ENCRYPTED CONNECTION • ZERO-TRUST ARCHITECTURE
-    </div>
-    """, unsafe_allow_html=True)
