@@ -13,102 +13,59 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 🚨 OVERHAULED CYBER CSS 🚨
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&display=swap');
 
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-    }
-
-    /* Deep Space Background */
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     .stApp {
         background-color: #050505;
         background-image: radial-gradient(circle at 50% 0%, #171124 0%, #050505 50%);
         color: #e2e8f0;
     }
-
-    h1, h2, h3 {
-        color: #f8fafc;
-        font-weight: 600 !important;
-        letter-spacing: -0.025em;
-    }
+    h1, h2, h3 { color: #f8fafc; font-weight: 600 !important; letter-spacing: -0.025em; }
     
-    /* Neon Header Text */
     .main-header {
-        font-size: 2.5rem;
-        background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0rem;
-        padding-bottom: 0rem;
-        font-weight: 800;
-        letter-spacing: -1px;
+        font-size: 2.5rem; background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        margin-bottom: 0rem; padding-bottom: 0rem; font-weight: 800; letter-spacing: -1px;
     }
     
-    /* Glowing Status Badge */
     .status-badge {
-        display: inline-block;
-        padding: 0.35rem 1rem;
-        border-radius: 50px;
-        background: rgba(16, 185, 129, 0.1);
-        border: 1px solid rgba(16, 185, 129, 0.4);
-        color: #10b981;
-        font-size: 0.85rem;
-        font-weight: 600;
-        margin-top: 1rem;
-        box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
-        letter-spacing: 1px;
+        display: inline-block; padding: 0.35rem 1rem; border-radius: 50px;
+        background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4);
+        color: #10b981; font-size: 0.85rem; font-weight: 600; margin-top: 1rem;
+        box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); letter-spacing: 1px;
     }
     
-    /* Advanced Cyber Cards with Neon Accents */
     .cyber-card {
-        background: rgba(15, 23, 42, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 8px; 
-        padding: 1.5rem;
-        position: relative;
-        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(12px);
+        background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 8px; padding: 1.5rem; position: relative;
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5); backdrop-filter: blur(12px);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-    .cyber-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.7);
-    }
+    .cyber-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.7); }
     .cyber-card::before, .cyber-card::after {
         content: ''; position: absolute; width: 15px; height: 15px;
         border: 2px solid transparent; pointer-events: none;
     }
     .cyber-card::before {
-        top: -1px; left: -1px;
-        border-top-color: var(--card-color); border-left-color: var(--card-color);
-        border-top-left-radius: 8px;
+        top: -1px; left: -1px; border-top-color: var(--card-color); border-left-color: var(--card-color); border-top-left-radius: 8px;
     }
     .cyber-card::after {
-        bottom: -1px; right: -1px;
-        border-bottom-color: var(--card-color); border-right-color: var(--card-color);
-        border-bottom-right-radius: 8px;
+        bottom: -1px; right: -1px; border-bottom-color: var(--card-color); border-right-color: var(--card-color); border-bottom-right-radius: 8px;
     }
-    .card-blue { --card-color: #3b82f6; }
-    .card-orange { --card-color: #ef4444; }
-    .card-purple { --card-color: #8b5cf6; }
+    .card-blue { --card-color: #3b82f6; } .card-orange { --card-color: #ef4444; } .card-purple { --card-color: #8b5cf6; }
     
     .cyber-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
     .cyber-card-title { font-size: 0.8rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
     .cyber-card-icon { font-size: 1.5rem; opacity: 0.9; }
     .cyber-card-value { font-size: 2.5rem; font-weight: 700; color: #f8fafc; line-height: 1; font-family: 'Fira Code', monospace; }
     
-    /* Terminal-Style Tables */
     .dataframe-container {
-        border-radius: 8px;
-        overflow: hidden;
-        border: 1px solid rgba(139, 92, 246, 0.2);
-        background: rgba(15, 23, 42, 0.7);
-        backdrop-filter: blur(10px);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        border-radius: 8px; overflow: hidden; border: 1px solid rgba(139, 92, 246, 0.2);
+        background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(10px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
     }
     
     table { width: 100%; border-collapse: collapse; font-size: 0.85rem; font-family: 'Fira Code', monospace; color: #cbd5e1; }
@@ -116,44 +73,18 @@ st.markdown("""
     td { padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); }
     tr:hover td { background-color: rgba(139, 92, 246, 0.08); }
 
-    /* Streamlit specific overrides for buttons and inputs */
+    /* Uniform Cyber Buttons */
     div.stButton > button {
-        background-color: rgba(30, 41, 59, 0.8);
-        color: #f8fafc;
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 6px;
-        transition: all 0.2s;
+        background-color: rgba(30, 41, 59, 0.8); color: #f8fafc;
+        border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; transition: all 0.2s;
     }
-    /* Dynamic Button Hovers */
-    div.stButton > button:hover {
-        border-color: #8b5cf6;
-        color: #8b5cf6;
-    }
-    /* Targeted hover for buttons containing the word Block/Terminate */
-    div[data-testid="stButton"] button:contains("Block"):hover, 
-    div[data-testid="stButton"] button:contains("Terminate"):hover {
-        border-color: #ef4444 !important;
-        color: #ef4444 !important;
-        background-color: rgba(239, 68, 68, 0.1) !important;
-    }
-    /* Targeted hover for Unblock */
-    div[data-testid="stButton"] button:contains("Unblock"):hover {
-        border-color: #10b981 !important;
-        color: #10b981 !important;
-        background-color: rgba(16, 185, 129, 0.1) !important;
-    }
+    div.stButton > button:hover { border-color: #8b5cf6; color: #8b5cf6; background-color: rgba(139, 92, 246, 0.1); }
     
-    code {
-        color: #3b82f6 !important;
-        background: rgba(59, 130, 246, 0.1) !important;
-    }
+    code { color: #3b82f6 !important; background: rgba(59, 130, 246, 0.1) !important; }
     
-    /* Input field styling for renaming */
     .stTextInput input {
-        background-color: rgba(15, 23, 42, 0.6) !important;
-        color: #3b82f6 !important;
-        border: 1px solid rgba(59, 130, 246, 0.3) !important;
-        font-family: 'Fira Code', monospace;
+        background-color: rgba(15, 23, 42, 0.6) !important; color: #3b82f6 !important;
+        border: 1px solid rgba(59, 130, 246, 0.3) !important; font-family: 'Fira Code', monospace;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -164,6 +95,10 @@ REGION = "us-east-1"
 ist = pytz.timezone('Asia/Kolkata')
 
 def check_aws_auth(username, password):
+    # If fields are entirely empty before hitting AWS
+    if not username or not password:
+        return False, "Please enter both username and password."
+        
     try:
         client = boto3.client(
             'cognito-idp', 
@@ -177,14 +112,19 @@ def check_aws_auth(username, password):
             AuthParameters={'USERNAME': username, 'PASSWORD': password}
         )
         return True, username
+    except client.exceptions.NotAuthorizedException:
+        return False, "Incorrect username or password."
+    except client.exceptions.UserNotFoundException:
+        return False, "User does not exist."
+    except client.exceptions.InvalidParameterException:
+        return False, "Please enter both username and password."
     except Exception as e:
-        return False, str(e)
+        return False, "Authentication service error. Please try again."
 
 def fetch_live_devices():
     try:
         dynamodb = boto3.resource(
-            'dynamodb',
-            region_name=REGION,
+            'dynamodb', region_name=REGION,
             aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
             aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"]
         )
@@ -193,8 +133,7 @@ def fetch_live_devices():
         
         formatted_devices = []
         for item in response.get('Items', []):
-            if 'query' in item: # Skip DNS logs
-                continue
+            if 'query' in item: continue
                 
             raw_time = item.get('last_seen')
             if raw_time:
@@ -219,27 +158,22 @@ def fetch_live_devices():
 def update_device_status(mac, ip, new_status, new_name=None):
     try:
         dynamodb = boto3.resource(
-            'dynamodb',
-            region_name=REGION,
+            'dynamodb', region_name=REGION,
             aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
             aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"]
         )
         table = dynamodb.Table('NetSentinel_Data')
         
-        # Base update logic
         update_expr = "SET #st = :val"
         expr_names = {'#st': 'status'}
         expr_values = {':val': new_status}
         
-        # If user provided a custom name when trusting, update that too
         if new_name:
             update_expr += ", device_name = :n"
             expr_values[':n'] = new_name
             
         table.update_item(
-            Key={
-                'mac_address': mac
-            },
+            Key={'mac_address': mac},
             UpdateExpression=update_expr,
             ExpressionAttributeNames=expr_names,
             ExpressionAttributeValues=expr_values
@@ -252,8 +186,7 @@ def update_device_status(mac, ip, new_status, new_name=None):
 def fetch_live_dns():
     try:
         dynamodb = boto3.resource(
-            'dynamodb',
-            region_name=REGION,
+            'dynamodb', region_name=REGION,
             aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
             aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"]
         )
@@ -274,30 +207,21 @@ def fetch_live_dns():
         return []
 
 def create_card(title, value, icon, color_class):
-    html = f"""
+    return f"""
     <div class="cyber-card {color_class}">
         <div class="cyber-card-header">
-            <span class="cyber-card-title">{title}</span>
-            <span class="cyber-card-icon">{icon}</span>
+            <span class="cyber-card-title">{title}</span><span class="cyber-card-icon">{icon}</span>
         </div>
-        <div class="cyber-card-body">
-            <span class="cyber-card-value">{value}</span>
-        </div>
+        <div class="cyber-card-body"><span class="cyber-card-value">{value}</span></div>
     </div>
     """
-    return html
 
 # --- 2. SESSION STATE INITIALIZATION ---
-if "authentication_status" not in st.session_state:
-    st.session_state["authentication_status"] = None
-if "name" not in st.session_state:
-    st.session_state["name"] = None
-if 'blacklist' not in st.session_state:
-    st.session_state.blacklist = []
-if 'devices' not in st.session_state:
-    st.session_state.devices = []
-if 'dns_filter_ip' not in st.session_state:
-    st.session_state.dns_filter_ip = None
+if "authentication_status" not in st.session_state: st.session_state["authentication_status"] = None
+if "name" not in st.session_state: st.session_state["name"] = None
+if 'blacklist' not in st.session_state: st.session_state.blacklist = []
+if 'devices' not in st.session_state: st.session_state.devices = []
+if 'dns_filter_ip' not in st.session_state: st.session_state.dns_filter_ip = None
 
 # --- 3. RENDER LOGIN ---
 if st.session_state["authentication_status"] is not True:
@@ -319,16 +243,14 @@ if st.session_state["authentication_status"] is not True:
                     st.rerun()
                 else:
                     st.session_state["authentication_status"] = False
-                    st.error(f"Login failed: {info}")
+                    st.error(f"Access Denied: {info}")
 
 # --- 4. SHOW DASHBOARD ---
 if st.session_state["authentication_status"] is True:
     
-    # FETCH LIVE DATA
     st.session_state.devices = fetch_live_devices()
     live_dns_logs = fetch_live_dns()
     
-    # --- HEADER WITH LIVE JS CLOCK ---
     col1, col2 = st.columns([2, 1])
     with col1:
         st.markdown('<div class="main-header">NetSentinel Command & Control</div>', unsafe_allow_html=True)
@@ -346,11 +268,9 @@ if st.session_state["authentication_status"] is True:
                     var timeString = now.toLocaleTimeString('en-US', {{ hour12: false, timeZone: 'Asia/Kolkata' }});
                     document.getElementById('live-clock').innerText = "SYS_TIME // " + timeString + " IST";
                 }}
-                setInterval(updateTime, 1000);
-                updateTime();
+                setInterval(updateTime, 1000); updateTime();
             </script>
-            """,
-            height=60
+            """, height=60
         )
         if st.button("Terminate Session", use_container_width=True):
             st.session_state["authentication_status"] = None
@@ -358,25 +278,20 @@ if st.session_state["authentication_status"] is True:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Metric Cards
     m1, m2, m3 = st.columns(3)
-    with m1:
-        st.markdown(create_card("LIVE DEVICES", len(st.session_state.devices), "📡", "card-blue"), unsafe_allow_html=True)
-    with m2:
-        st.markdown(create_card("CONTAINMENT ZONE", len(st.session_state.blacklist), "🚫", "card-orange"), unsafe_allow_html=True)
-    with m3:
-        st.markdown(create_card("DNS QUERIES", len(live_dns_logs), "🔗", "card-purple"), unsafe_allow_html=True)
+    with m1: st.markdown(create_card("LIVE DEVICES", len(st.session_state.devices), "📡", "card-blue"), unsafe_allow_html=True)
+    with m2: st.markdown(create_card("CONTAINMENT ZONE", len(st.session_state.blacklist), "🚫", "card-orange"), unsafe_allow_html=True)
+    with m3: st.markdown(create_card("DNS QUERIES", len(live_dns_logs), "🔗", "card-purple"), unsafe_allow_html=True)
 
     st.markdown("<br><hr style='border-color: rgba(255,255,255,0.05);'><br>", unsafe_allow_html=True)
 
-    # Active Blacklist Section
     st.markdown("### 🚫 Active Mitigation (Blacklist)")
     if st.session_state.blacklist:
         for mac in st.session_state.blacklist:
             b_col1, b_col2 = st.columns([4, 1])
             b_col1.error(f"BLOCKED MAC: `{mac}` - Routing to void.")
-            if b_col2.button("✅ Unblock", key=f"unblock_{mac}"):
-                if update_device_status(mac, "Unknown", "PENDING"): # Reset to pending
+            if b_col2.button("🔓 Unblock", key=f"unblock_{mac}"):
+                if update_device_status(mac, "Unknown", "PENDING"): 
                     st.session_state.blacklist.remove(mac)
                     st.rerun()
     else:
@@ -388,11 +303,10 @@ if st.session_state["authentication_status"] is True:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Live Network Status Table
     st.markdown("### 📡 Live Network Status")
     
     if len(st.session_state.devices) > 0:
-        h1, h2, h3, h_time, h4, h5 = st.columns([2, 2, 2, 2, 1, 3]) # Widened Action column
+        h1, h2, h3, h_time, h4, h5 = st.columns([2, 2, 2, 2, 1, 3]) 
         h1.write("**Device Name**")
         h2.write("**MAC Address**")
         h3.write("**IP Address**")
@@ -401,19 +315,16 @@ if st.session_state["authentication_status"] is True:
         h5.write("**Action Center**")
 
         for index, row in enumerate(st.session_state.devices):
-            if row['status'] == 'BLOCKED':
-                continue
+            if row['status'] == 'BLOCKED': continue
                 
             c1, c2, c3, c_time, c4, c5 = st.columns([2, 2, 2, 2, 1, 3])
             
-            # 🚨 DYNAMIC RENAME LOGIC 🚨
             with c1:
                 if row['status'] == "PENDING":
-                    # Turns name into an input box so you can label it before trusting
                     custom_name = st.text_input("Name", value=row['name'], key=f"name_{row['mac']}", label_visibility="collapsed")
                 else:
                     st.write(f"**{row['name']}**")
-                    custom_name = row['name'] # Keeps existing name if already trusted
+                    custom_name = row['name'] 
             
             c2.code(row['mac'])
             c3.code(row['ip'])
@@ -426,24 +337,29 @@ if st.session_state["authentication_status"] is True:
                     st.markdown("<span style='color: #f59e0b; font-weight: bold; letter-spacing: 0.05em;'>PENDING</span>", unsafe_allow_html=True)
                     
             with c5:
-                # 3 Buttons: Trust (if pending), Block, DNS Query
-                bc1, bc2, bc3 = st.columns(3)
-                
+                # Dynamic columns for buttons based on status
                 if row['status'] == "PENDING":
+                    bc1, bc2, bc3 = st.columns(3)
                     if bc1.button("✅ Trust", key=f"t_{row['mac']}"):
-                        # Pushes the custom name up to DynamoDB with the new status
                         if update_device_status(row['mac'], row['ip'], "TRUSTED", new_name=custom_name):
                             st.rerun() 
-                
-                if bc2.button("🚫 Block", key=f"b_{row['mac']}"):
-                    if update_device_status(row['mac'], row['ip'], "BLOCKED"):
-                        st.session_state.blacklist.append(row['mac'])
+                    if bc2.button("🚫 Block", key=f"b_{row['mac']}"):
+                        if update_device_status(row['mac'], row['ip'], "BLOCKED"):
+                            st.session_state.blacklist.append(row['mac'])
+                            st.rerun()
+                    if bc3.button("🔍 DNS", key=f"dns_{row['mac']}"):
+                        st.session_state.dns_filter_ip = row['ip']
                         st.rerun()
-                        
-                # 🚨 DNS QUERY FILTER BUTTON 🚨
-                if bc3.button("🔍 DNS", key=f"dns_{row['mac']}"):
-                    st.session_state.dns_filter_ip = row['ip']
-                    st.rerun()
+                else:
+                    # If trusted, Trust button is gone, layout adapts to 2 buttons
+                    bc1, bc2 = st.columns(2)
+                    if bc1.button("🚫 Block", key=f"b_{row['mac']}"):
+                        if update_device_status(row['mac'], row['ip'], "BLOCKED"):
+                            st.session_state.blacklist.append(row['mac'])
+                            st.rerun()
+                    if bc2.button("🔍 DNS", key=f"dns_{row['mac']}"):
+                        st.session_state.dns_filter_ip = row['ip']
+                        st.rerun()
                     
     else:
         st.markdown("""
@@ -454,11 +370,9 @@ if st.session_state["authentication_status"] is True:
 
     st.markdown("<br><hr style='border-color: rgba(255,255,255,0.05);'><br>", unsafe_allow_html=True)
 
-    # Traffic Hearing (LIVE FETCH & TERMINATION)
     st.markdown("### 👂 Live DNS Anomaly Feed")
     st.markdown("<p style='color: #94a3b8; margin-bottom: 1rem; font-family: \"Fira Code\", monospace;'>Real-time interception of DNS queries.</p>", unsafe_allow_html=True)
     
-    # Filter DNS Logs if a specific device's 🔍 DNS button was clicked
     if st.session_state.dns_filter_ip:
         f_col1, f_col2 = st.columns([4, 1])
         f_col1.info(f"🔍 **Currently Filtering DNS queries for IP:** `{st.session_state.dns_filter_ip}`")
@@ -480,7 +394,6 @@ if st.session_state["authentication_status"] is True:
         for index, log in enumerate(display_logs):
             lc1, lc2, lc3, lc4 = st.columns([1.5, 2, 3, 1.5])
             
-            # Format raw unix timestamp if needed, or just display
             log_time = log['Timestamp']
             if isinstance(log_time, (int, float)) or (isinstance(log_time, str) and log_time.isdigit()):
                 dt_obj = datetime.fromtimestamp(int(log_time), ist)
@@ -507,7 +420,6 @@ if st.session_state["authentication_status"] is True:
                             st.rerun()
                     else:
                         st.error("Error: Device IP not found in active state.")
-
     else:
         st.markdown("""
         <div style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px dashed rgba(139, 92, 246, 0.3); color: #94a3b8; font-family: 'Fira Code', monospace;">
