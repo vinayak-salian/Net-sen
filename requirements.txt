@@ -1,4 +1,8 @@
+scapy
+requests
+win10toast
+mac-vendor-lookup
 streamlit
-streamlit-authenticator
-pandas   
+pandas
 boto3
+pytz
