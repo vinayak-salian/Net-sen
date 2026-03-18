@@ -1,1 +1,10 @@
 
+# Ignore local environment and cache files
+__pycache__/
+vendor_cache.json
+scan_log.txt
+trusted.json
+
+# 🚨 NEVER UPLOAD THESE TO GITHUB 🚨
+config.json
+.streamlit/secrets.toml
