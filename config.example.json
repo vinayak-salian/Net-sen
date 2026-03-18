@@ -1,1 +1,6 @@
 
+{
+    "refresh_token": "YOUR_COGNITO_REFRESH_TOKEN_HERE", 
+    "network_name": "My-Isolated-Lab",
+    "client_id": "YOUR_COGNITO_CLIENT_ID_HERE" 
+}
