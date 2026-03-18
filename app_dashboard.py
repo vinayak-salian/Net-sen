@@ -95,7 +95,6 @@ REGION = "us-east-1"
 ist = pytz.timezone('Asia/Kolkata')
 
 def check_aws_auth(username, password):
-    # If fields are entirely empty before hitting AWS
     if not username or not password:
         return False, "Please enter both username and password."
         
@@ -183,6 +182,23 @@ def update_device_status(mac, ip, new_status, new_name=None):
         st.error(f"Failed to update database: {e}")
         return False
 
+# 🚨 THE NEW C2 COMMAND ISSUER 🚨
+def toggle_dns_monitoring(mac, state_boolean):
+    try:
+        dynamodb = boto3.resource(
+            'dynamodb', region_name=REGION,
+            aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
+            aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"]
+        )
+        table = dynamodb.Table('NetSentinel_Data')
+        table.update_item(
+            Key={'mac_address': mac},
+            UpdateExpression="SET dns_monitor = :val",
+            ExpressionAttributeValues={':val': state_boolean}
+        )
+    except Exception as e:
+        st.error(f"Failed to issue C2 command: {e}")
+
 def fetch_live_dns():
     try:
         dynamodb = boto3.resource(
@@ -222,6 +238,7 @@ if "name" not in st.session_state: st.session_state["name"] = None
 if 'blacklist' not in st.session_state: st.session_state.blacklist = []
 if 'devices' not in st.session_state: st.session_state.devices = []
 if 'dns_filter_ip' not in st.session_state: st.session_state.dns_filter_ip = None
+if 'dns_filter_mac' not in st.session_state: st.session_state.dns_filter_mac = None
 
 # --- 3. RENDER LOGIN ---
 if st.session_state["authentication_status"] is not True:
@@ -337,7 +354,6 @@ if st.session_state["authentication_status"] is True:
                     st.markdown("<span style='color: #f59e0b; font-weight: bold; letter-spacing: 0.05em;'>PENDING</span>", unsafe_allow_html=True)
                     
             with c5:
-                # Dynamic columns for buttons based on status
                 if row['status'] == "PENDING":
                     bc1, bc2, bc3 = st.columns(3)
                     if bc1.button("✅ Trust", key=f"t_{row['mac']}"):
@@ -348,17 +364,22 @@ if st.session_state["authentication_status"] is True:
                             st.session_state.blacklist.append(row['mac'])
                             st.rerun()
                     if bc3.button("🔍 DNS", key=f"dns_{row['mac']}"):
+                        # ISSUE THE COMMAND
+                        toggle_dns_monitoring(row['mac'], True)
                         st.session_state.dns_filter_ip = row['ip']
+                        st.session_state.dns_filter_mac = row['mac']
                         st.rerun()
                 else:
-                    # If trusted, Trust button is gone, layout adapts to 2 buttons
                     bc1, bc2 = st.columns(2)
                     if bc1.button("🚫 Block", key=f"b_{row['mac']}"):
                         if update_device_status(row['mac'], row['ip'], "BLOCKED"):
                             st.session_state.blacklist.append(row['mac'])
                             st.rerun()
                     if bc2.button("🔍 DNS", key=f"dns_{row['mac']}"):
+                        # ISSUE THE COMMAND
+                        toggle_dns_monitoring(row['mac'], True)
                         st.session_state.dns_filter_ip = row['ip']
+                        st.session_state.dns_filter_mac = row['mac']
                         st.rerun()
                     
     else:
@@ -371,13 +392,17 @@ if st.session_state["authentication_status"] is True:
     st.markdown("<br><hr style='border-color: rgba(255,255,255,0.05);'><br>", unsafe_allow_html=True)
 
     st.markdown("### 👂 Live DNS Anomaly Feed")
-    st.markdown("<p style='color: #94a3b8; margin-bottom: 1rem; font-family: \"Fira Code\", monospace;'>Real-time interception of DNS queries.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94a3b8; margin-bottom: 1rem; font-family: \"Fira Code\", monospace;'>On-Demand telemetry feed.</p>", unsafe_allow_html=True)
     
     if st.session_state.dns_filter_ip:
         f_col1, f_col2 = st.columns([4, 1])
-        f_col1.info(f"🔍 **Currently Filtering DNS queries for IP:** `{st.session_state.dns_filter_ip}`")
-        if f_col2.button("✖️ Clear Filter", use_container_width=True):
+        f_col1.info(f"🔍 **Currently Filtering & Listening to IP:** `{st.session_state.dns_filter_ip}`")
+        if f_col2.button("✖️ Stop & Clear Filter", use_container_width=True):
+            # REVOKE THE COMMAND
+            if st.session_state.dns_filter_mac:
+                toggle_dns_monitoring(st.session_state.dns_filter_mac, False)
             st.session_state.dns_filter_ip = None
+            st.session_state.dns_filter_mac = None
             st.rerun()
             
         display_logs = [log for log in live_dns_logs if log['Source IP'] == st.session_state.dns_filter_ip]
@@ -414,7 +439,7 @@ if st.session_state["authentication_status"] is True:
                     if offending_mac:
                         if update_device_status(offending_mac, log['Source IP'], "BLOCKED"):
                             st.session_state.blacklist.append(offending_mac)
-                            st.success(f"⚠️ TARGET ISOLATED: IP {log['Source IP']} routed to Containment Zone.")
+                            st.success(f"⚠️ TARGET ISOLATED.")
                             import time
                             time.sleep(1.5)
                             st.rerun()
@@ -423,9 +448,12 @@ if st.session_state["authentication_status"] is True:
     else:
         st.markdown("""
         <div style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px dashed rgba(139, 92, 246, 0.3); color: #94a3b8; font-family: 'Fira Code', monospace;">
-            Awaiting live DNS telemetry. No queries match current filters.
+            Awaiting live DNS telemetry. Ensure target is active.
         </div>
         """, unsafe_allow_html=True)
+
+    # 🚨 MANUAL REFRESH BUTTON 🚨
+    st.button("🔄 Refresh Data Feed", use_container_width=True)
 
     st.markdown("""
     <div style="text-align: center; margin-top: 3rem; color: #475569; font-size: 0.75rem; font-family: 'Fira Code', monospace; letter-spacing: 0.1em;">
