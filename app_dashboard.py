@@ -93,7 +93,7 @@ st.markdown("""
         border-bottom-right-radius: 8px;
     }
     .card-blue { --card-color: #3b82f6; }
-    .card-orange { --card-color: #f59e0b; }
+    .card-orange { --card-color: #ef4444; }
     .card-purple { --card-color: #8b5cf6; }
     
     .cyber-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
@@ -116,7 +116,7 @@ st.markdown("""
     td { padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); }
     tr:hover td { background-color: rgba(139, 92, 246, 0.08); }
 
-    /* Streamlit specific overrides for buttons and code blocks */
+    /* Streamlit specific overrides for buttons and inputs */
     div.stButton > button {
         background-color: rgba(30, 41, 59, 0.8);
         color: #f8fafc;
@@ -124,13 +124,36 @@ st.markdown("""
         border-radius: 6px;
         transition: all 0.2s;
     }
+    /* Dynamic Button Hovers */
     div.stButton > button:hover {
         border-color: #8b5cf6;
         color: #8b5cf6;
     }
+    /* Targeted hover for buttons containing the word Block/Terminate */
+    div[data-testid="stButton"] button:contains("Block"):hover, 
+    div[data-testid="stButton"] button:contains("Terminate"):hover {
+        border-color: #ef4444 !important;
+        color: #ef4444 !important;
+        background-color: rgba(239, 68, 68, 0.1) !important;
+    }
+    /* Targeted hover for Unblock */
+    div[data-testid="stButton"] button:contains("Unblock"):hover {
+        border-color: #10b981 !important;
+        color: #10b981 !important;
+        background-color: rgba(16, 185, 129, 0.1) !important;
+    }
+    
     code {
         color: #3b82f6 !important;
         background: rgba(59, 130, 246, 0.1) !important;
+    }
+    
+    /* Input field styling for renaming */
+    .stTextInput input {
+        background-color: rgba(15, 23, 42, 0.6) !important;
+        color: #3b82f6 !important;
+        border: 1px solid rgba(59, 130, 246, 0.3) !important;
+        font-family: 'Fira Code', monospace;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -193,7 +216,7 @@ def fetch_live_devices():
         st.error(f"DynamoDB Error: {e}")
         return []
 
-def update_device_status(mac, ip, new_status):
+def update_device_status(mac, ip, new_status, new_name=None):
     try:
         dynamodb = boto3.resource(
             'dynamodb',
@@ -203,17 +226,23 @@ def update_device_status(mac, ip, new_status):
         )
         table = dynamodb.Table('NetSentinel_Data')
         
+        # Base update logic
+        update_expr = "SET #st = :val"
+        expr_names = {'#st': 'status'}
+        expr_values = {':val': new_status}
+        
+        # If user provided a custom name when trusting, update that too
+        if new_name:
+            update_expr += ", device_name = :n"
+            expr_values[':n'] = new_name
+            
         table.update_item(
             Key={
-                'mac_address': mac  # <-- ONLY use mac_address here
+                'mac_address': mac
             },
-            UpdateExpression="SET #st = :val",
-            ExpressionAttributeNames={
-                '#st': 'status'
-            },
-            ExpressionAttributeValues={
-                ':val': new_status
-            }
+            UpdateExpression=update_expr,
+            ExpressionAttributeNames=expr_names,
+            ExpressionAttributeValues=expr_values
         )
         return True
     except Exception as e:
@@ -267,6 +296,8 @@ if 'blacklist' not in st.session_state:
     st.session_state.blacklist = []
 if 'devices' not in st.session_state:
     st.session_state.devices = []
+if 'dns_filter_ip' not in st.session_state:
+    st.session_state.dns_filter_ip = None
 
 # --- 3. RENDER LOGIN ---
 if st.session_state["authentication_status"] is not True:
@@ -303,7 +334,6 @@ if st.session_state["authentication_status"] is True:
         st.markdown('<div class="main-header">NetSentinel Command & Control</div>', unsafe_allow_html=True)
         st.markdown('<div class="status-badge">🟢 AGENT OPERATIONAL • SECURE LINK</div>', unsafe_allow_html=True)
     with col2:
-        # 🚨 LIVE TICKING CLOCK INJECTION 🚨
         components.html(
             f"""
             <div style="text-align: right; padding-top: 0.5rem; color: #94a3b8; font-family: 'Fira Code', monospace; font-size: 14px; font-weight: 500;">
@@ -345,12 +375,13 @@ if st.session_state["authentication_status"] is True:
         for mac in st.session_state.blacklist:
             b_col1, b_col2 = st.columns([4, 1])
             b_col1.error(f"BLOCKED MAC: `{mac}` - Routing to void.")
-            if b_col2.button("Unblock", key=f"unblock_{mac}"):
-                st.session_state.blacklist.remove(mac)
-                st.rerun()
+            if b_col2.button("✅ Unblock", key=f"unblock_{mac}"):
+                if update_device_status(mac, "Unknown", "PENDING"): # Reset to pending
+                    st.session_state.blacklist.remove(mac)
+                    st.rerun()
     else:
         st.markdown("""
-        <div style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px dashed rgba(139, 92, 246, 0.3); color: #94a3b8; font-family: 'Fira Code', monospace;">
+        <div style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px dashed rgba(239, 68, 68, 0.3); color: #94a3b8; font-family: 'Fira Code', monospace;">
             Containment zone is currently empty. No entities actively banned.
         </div>
         """, unsafe_allow_html=True)
@@ -361,20 +392,29 @@ if st.session_state["authentication_status"] is True:
     st.markdown("### 📡 Live Network Status")
     
     if len(st.session_state.devices) > 0:
-        h1, h2, h3, h_time, h4, h5 = st.columns([2, 2, 2, 2, 1, 2])
+        h1, h2, h3, h_time, h4, h5 = st.columns([2, 2, 2, 2, 1, 3]) # Widened Action column
         h1.write("**Device Name**")
         h2.write("**MAC Address**")
         h3.write("**IP Address**")
         h_time.write("**Last Seen**")
         h4.write("**Status**")
-        h5.write("**Action**")
+        h5.write("**Action Center**")
 
         for index, row in enumerate(st.session_state.devices):
             if row['status'] == 'BLOCKED':
                 continue
                 
-            c1, c2, c3, c_time, c4, c5 = st.columns([2, 2, 2, 2, 1, 2])
-            c1.write(f"**{row['name']}**")
+            c1, c2, c3, c_time, c4, c5 = st.columns([2, 2, 2, 2, 1, 3])
+            
+            # 🚨 DYNAMIC RENAME LOGIC 🚨
+            with c1:
+                if row['status'] == "PENDING":
+                    # Turns name into an input box so you can label it before trusting
+                    custom_name = st.text_input("Name", value=row['name'], key=f"name_{row['mac']}", label_visibility="collapsed")
+                else:
+                    st.write(f"**{row['name']}**")
+                    custom_name = row['name'] # Keeps existing name if already trusted
+            
             c2.code(row['mac'])
             c3.code(row['ip'])
             c_time.markdown(f"<span style='color: #94a3b8; font-family: \"Fira Code\", monospace;'>{row['last_seen']}</span>", unsafe_allow_html=True)
@@ -386,19 +426,25 @@ if st.session_state["authentication_status"] is True:
                     st.markdown("<span style='color: #f59e0b; font-weight: bold; letter-spacing: 0.05em;'>PENDING</span>", unsafe_allow_html=True)
                     
             with c5:
-                btn_col1, btn_col2 = st.columns(2)
+                # 3 Buttons: Trust (if pending), Block, DNS Query
+                bc1, bc2, bc3 = st.columns(3)
                 
                 if row['status'] == "PENDING":
-                    if btn_col1.button("✅ Trust", key=f"t_{row['mac']}"):
-                        if update_device_status(row['mac'], row['ip'], "TRUSTED"):
+                    if bc1.button("✅ Trust", key=f"t_{row['mac']}"):
+                        # Pushes the custom name up to DynamoDB with the new status
+                        if update_device_status(row['mac'], row['ip'], "TRUSTED", new_name=custom_name):
                             st.rerun() 
-                else:
-                    btn_col1.button("Done", disabled=True, key=f"v_{row['mac']}")
                 
-                if btn_col2.button("🚫 Block", key=f"b_{row['mac']}"):
+                if bc2.button("🚫 Block", key=f"b_{row['mac']}"):
                     if update_device_status(row['mac'], row['ip'], "BLOCKED"):
                         st.session_state.blacklist.append(row['mac'])
                         st.rerun()
+                        
+                # 🚨 DNS QUERY FILTER BUTTON 🚨
+                if bc3.button("🔍 DNS", key=f"dns_{row['mac']}"):
+                    st.session_state.dns_filter_ip = row['ip']
+                    st.rerun()
+                    
     else:
         st.markdown("""
         <div style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px dashed rgba(139, 92, 246, 0.3); color: #94a3b8; font-family: 'Fira Code', monospace;">
@@ -408,53 +454,69 @@ if st.session_state["authentication_status"] is True:
 
     st.markdown("<br><hr style='border-color: rgba(255,255,255,0.05);'><br>", unsafe_allow_html=True)
 
-    # Traffic Hearing (LIVE FETCH)
     # Traffic Hearing (LIVE FETCH & TERMINATION)
     st.markdown("### 👂 Live DNS Anomaly Feed")
     st.markdown("<p style='color: #94a3b8; margin-bottom: 1rem; font-family: \"Fira Code\", monospace;'>Real-time interception of DNS queries.</p>", unsafe_allow_html=True)
     
-    if live_dns_logs:
-        # Create a dynamic table for the logs
+    # Filter DNS Logs if a specific device's 🔍 DNS button was clicked
+    if st.session_state.dns_filter_ip:
+        f_col1, f_col2 = st.columns([4, 1])
+        f_col1.info(f"🔍 **Currently Filtering DNS queries for IP:** `{st.session_state.dns_filter_ip}`")
+        if f_col2.button("✖️ Clear Filter", use_container_width=True):
+            st.session_state.dns_filter_ip = None
+            st.rerun()
+            
+        display_logs = [log for log in live_dns_logs if log['Source IP'] == st.session_state.dns_filter_ip]
+    else:
+        display_logs = live_dns_logs
+
+    if display_logs:
         log_col1, log_col2, log_col3, log_col4 = st.columns([1.5, 2, 3, 1.5])
         log_col1.write("**Time**")
         log_col2.write("**Source IP**")
         log_col3.write("**Query (Target)**")
         log_col4.write("**Action**")
         
-        for index, log in enumerate(live_dns_logs):
+        for index, log in enumerate(display_logs):
             lc1, lc2, lc3, lc4 = st.columns([1.5, 2, 3, 1.5])
-            lc1.markdown(f"<span style='color: #94a3b8; font-family: \"Fira Code\", monospace;'>{log['Timestamp']}</span>", unsafe_allow_html=True)
+            
+            # Format raw unix timestamp if needed, or just display
+            log_time = log['Timestamp']
+            if isinstance(log_time, (int, float)) or (isinstance(log_time, str) and log_time.isdigit()):
+                dt_obj = datetime.fromtimestamp(int(log_time), ist)
+                log_time = dt_obj.strftime('%H:%M:%S | %d %b')
+                
+            lc1.markdown(f"<span style='color: #94a3b8; font-family: \"Fira Code\", monospace;'>{log_time}</span>", unsafe_allow_html=True)
             lc2.code(log['Source IP'])
             lc3.markdown(f"<span style='color: #3b82f6;'>{log['Query']}</span>", unsafe_allow_html=True)
             
             with lc4:
-                # The Terminate Button
-                if st.button("⚡ Terminate", key=f"term_{index}_{log['Source IP']}"):
-                    
-                    # 1. Look up the MAC address associated with this offending IP
+                if st.button("⚡ Terminate", key=f"term_{index}_{log['Source IP']}_{log['Query']}"):
                     offending_mac = None
                     for device in st.session_state.devices:
                         if device['ip'] == log['Source IP']:
                             offending_mac = device['mac']
                             break
                             
-                    # 2. If we found the device, execute the ban
                     if offending_mac:
                         if update_device_status(offending_mac, log['Source IP'], "BLOCKED"):
-                            # Update local state so UI refreshes correctly
                             st.session_state.blacklist.append(offending_mac)
-                            # Show the temporary ban notification
-                            st.success(f"⚠️ TARGET ISOLATED: IP {log['Source IP']} has been routed to the Containment Zone for visiting {log['Query']}.")
-                            # Rerun after a short delay so user sees the message
+                            st.success(f"⚠️ TARGET ISOLATED: IP {log['Source IP']} routed to Containment Zone.")
                             import time
-                            time.sleep(2)
+                            time.sleep(1.5)
                             st.rerun()
                     else:
-                        st.error("Cannot terminate: Device IP not found in active network list.")
+                        st.error("Error: Device IP not found in active state.")
 
     else:
         st.markdown("""
         <div style="padding: 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px dashed rgba(139, 92, 246, 0.3); color: #94a3b8; font-family: 'Fira Code', monospace;">
-            Awaiting live DNS telemetry. No queries intercepted yet.
+            Awaiting live DNS telemetry. No queries match current filters.
         </div>
         """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="text-align: center; margin-top: 3rem; color: #475569; font-size: 0.75rem; font-family: 'Fira Code', monospace; letter-spacing: 0.1em;">
+        NETSENTINEL CORE BUILD 1.5.0 • ENCRYPTED CONNECTION • ZERO-TRUST ARCHITECTURE
+    </div>
+    """, unsafe_allow_html=True)
