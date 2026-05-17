@@ -45,7 +45,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- 1. AWS CONFIG & FUNCTIONS ---
-COGNITO_CLIENT_ID = "f5etbjhkikcoe31g58iqkmv1j"
+COGNITO_CLIENT_ID = ""
 REGION = "us-east-1"
 ist = pytz.timezone('Asia/Kolkata')
 
